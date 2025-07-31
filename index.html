@@ -264,21 +264,52 @@ recognition.interimResults = true; // ✅ Add this line here
         return;
       }
 
-      // Detect Ayah number (like "الآية رقم 3" or just "3")
-      const ayahNumberMatch = transcript.match(/(?:ال)?آية(?: رقم)? ?(\d+)/) || transcript.match(/\b(\d+)\b/);
-      if (ayahNumberMatch && currentSurah) {
-        const num = parseInt(ayahNumberMatch[1]);
-        if (!isNaN(num) && num === currentIndex + 1) {
-          const lamps = document.querySelectorAll('.lamp');
-          const verses = document.querySelectorAll('.verse');
-          if (lamps[currentIndex]) {
-            lamps[currentIndex].classList.add('on');
-            verses[currentIndex].style.display = 'block';
-            verses[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            currentIndex++;
-          }
-        }
-      }
+// Arabic and digit number mapping
+const numberMap = {
+  "واحد": 1,
+  "١": 1,
+  "1": 1,
+  "اثنين": 2,
+  "ثنين": 2,
+  "٢": 2,
+  "2": 2,
+  "ثلاثة": 3,
+  "٣": 3,
+  "3": 3,
+  "أربعة": 4,
+  "٤": 4,
+  "4": 4,
+  "خمسة": 5,
+  "٥": 5,
+  "5": 5,
+  // Add more as needed
+};
+
+// Extract word/digit number
+let numberKey = normalizedTranscript;
+if (normalizedTranscript.includes("اية") || normalizedTranscript.includes("الايه")) {
+  const match = transcript.match(/\d+/);
+  if (match) numberKey = match[0];
+}
+
+// Lookup number
+const requestedIndex = numberMap[numberKey];
+if (requestedIndex && currentSurah) {
+  const lamps = document.querySelectorAll('.lamp');
+  const verses = document.querySelectorAll('.verse');
+  const idx = requestedIndex - 1;
+
+  if (lamps[idx]) {
+    lamps[idx].classList.add('on');
+    verses[idx].style.display = 'block';
+    verses[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (idx === currentIndex) {
+      currentIndex++;
+    }
+  }
+}
+
     };
 
     recognition.onerror = (e) => {

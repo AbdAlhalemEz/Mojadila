@@ -39,11 +39,12 @@
  #path {
   width: 100%;
   max-width: 400px;
-  margin: 0 auto;
+  margin: 0 auto 200px auto; /* Further increased bottom margin to prevent overlap */
   display: flex;
   flex-direction: column;
   align-items: center;
   max-height: 70vh;
+  padding-bottom: 120px; /* Existing padding */
 }
   .lamp {
     width: 60px;
@@ -88,9 +89,9 @@
   }
   #backBtn {
     position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 20px;
+    right: 20px;
+    transform: none;
     margin-top: 0;
     padding: 10px 20px;
     background: #4CAF50;
@@ -100,6 +101,9 @@
     cursor: pointer;
     display: inline-block;
   }
+  #path-container {
+    padding-bottom: 150px; /* Added extra padding to ensure visibility of the last Ayah */
+  }
 </style>
 </head>
 <body>
@@ -108,7 +112,9 @@
 <div id="surah-list"></div>
 
 <div id="bismillah" style="display:none;">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
-<div id="path" style="display:none;"></div>
+<div id="path-container" style="display:none;">
+  <div id="path"></div>
+</div>
 <div id="backBtn" style="display:none;">🔙 العودة إلى القائمة</div>
 
 <script>
@@ -152,18 +158,20 @@
     currentIndex = 0;
     document.getElementById('pageTitle').innerText = '🎈 اختر سورة من جزء قد سمع 🎈';
     document.getElementById('surah-list').style.display = 'flex';
-    document.getElementById('path').style.display = 'none';
+    document.getElementById('path-container').style.display = 'none';
     document.getElementById('bismillah').style.display = 'none';
     document.getElementById('backBtn').style.display = 'none';
 
     const list = document.getElementById('surah-list');
     list.innerHTML = '';
+    let index = 1;
     for (let name in surahs) {
       const ball = document.createElement('div');
       ball.className = 'balloon';
-      ball.innerText = `سورة ${name}`;
+      ball.innerText = `${index}. سورة ${name}`;
       ball.onclick = () => showSurah(name);
       list.appendChild(ball);
+      index++;
     }
   }
 
@@ -172,7 +180,7 @@
     currentIndex = 0;
     document.getElementById('pageTitle').innerText = `🌟 سورة ${name} - طريق النور 🌟`;
     document.getElementById('surah-list').style.display = 'none';
-    document.getElementById('path').style.display = 'flex';
+    document.getElementById('path-container').style.display = 'flex';
     document.getElementById('bismillah').style.display = 'block';
     document.getElementById('backBtn').style.display = 'inline-block';
 
@@ -194,6 +202,20 @@
       path.appendChild(lamp);
       path.appendChild(verse);
     });
+
+    const lamps = document.querySelectorAll('.lamp');
+    const verses = document.querySelectorAll('.verse');
+
+    lamps.forEach((lamp, index) => {
+      lamp.onclick = () => {
+        if (index === currentIndex) {
+          lamp.classList.add('on');
+          verses[index].style.display = 'block';
+          verses[index].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          currentIndex++;
+        }
+      };
+    });
   }
 
   document.getElementById('backBtn').onclick = () => {
@@ -213,24 +235,58 @@
     recognition.interimResults = false;
 
     recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.trim();
-      const num = parseInt(transcript);
-      if (!isNaN(num)) {
-        if (!currentSurah) {
-          const surahNames = Object.keys(surahs);
-          if (surahNames[num - 1]) {
-            showSurah(surahNames[num - 1]);
-          }
-        } else {
-          if (num === currentIndex + 1) {
-            const lamps = document.querySelectorAll('.lamp');
-            const verses = document.querySelectorAll('.verse');
-            if (lamps[currentIndex]) {
-              lamps[currentIndex].classList.add('on');
-              verses[currentIndex].style.display = 'block';
-              verses[currentIndex].scrollIntoView({behavior: 'smooth', block: 'center'});
-              currentIndex++;
+      const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+      if (transcript.includes('refresh')) {
+        location.reload();
+        return;
+      }
+
+      // Normalize Surah names and check for partial matches
+      const surahNames = Object.keys(surahs);
+  const normalizeArabic = (text) =>
+  text
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[^\u0621-\u064A0-9 ]+/g, '') // Remove diacritics/punctuation
+    .toLowerCase()
+    .trim();
+
+const normalizedTranscript = normalizeArabic(transcript);
+
+const matchedSurah = surahNames.find(name => {
+  return normalizedTranscript.includes(normalizeArabic(name));
+});
+
+
+      if (matchedSurah) {
+        showSurah(matchedSurah);
+        return;
+      }
+
+      const numbers = transcript.match(/\d+/g); // Extract all numbers from the transcript
+      if (numbers) {
+        const num = parseInt(numbers[0]); // Use the first number detected
+        if (!isNaN(num)) {
+          if (!currentSurah) {
+            if (surahNames[num - 1]) {
+              showSurah(surahNames[num - 1]);
             }
+          } else {
+        const lamps = document.querySelectorAll('.lamp');
+const verses = document.querySelectorAll('.verse');
+const index = num - 1;
+if (index >= 0 && index < lamps.length) {
+  // Turn on the selected lamp
+  lamps[index].classList.add('on');
+  verses[index].style.display = 'block';
+  verses[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Update currentIndex if needed
+  if (index >= currentIndex) {
+    currentIndex = index + 1;
+  }
+}
+
           }
         }
       }

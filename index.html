@@ -222,6 +222,15 @@
     showSurahList();
   };
 
+  function normalizeArabic(text) {
+    return text
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[^\u0621-\u064A0-9 ]+/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
   function startListening() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -235,58 +244,38 @@
     recognition.interimResults = false;
 
     recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-      if (transcript.includes('refresh')) {
+      const transcript = event.results[event.results.length - 1][0].transcript.trim();
+      const normalizedTranscript = normalizeArabic(transcript);
+
+      // Refresh command
+      if (normalizedTranscript.includes('تحديث') || normalizedTranscript.includes('رفرش') || normalizedTranscript.includes('refresh')) {
         location.reload();
         return;
       }
 
-      // Normalize Surah names and check for partial matches
+      // Detect Surah name
       const surahNames = Object.keys(surahs);
-  const normalizeArabic = (text) =>
-  text
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/[^\u0621-\u064A0-9 ]+/g, '') // Remove diacritics/punctuation
-    .toLowerCase()
-    .trim();
-
-const normalizedTranscript = normalizeArabic(transcript);
-
-const matchedSurah = surahNames.find(name => {
-  return normalizedTranscript.includes(normalizeArabic(name));
-});
-
+      const matchedSurah = surahNames.find(name => {
+        return normalizedTranscript.includes(normalizeArabic(name));
+      });
 
       if (matchedSurah) {
         showSurah(matchedSurah);
         return;
       }
 
-      const numbers = transcript.match(/\d+/g); // Extract all numbers from the transcript
-      if (numbers) {
-        const num = parseInt(numbers[0]); // Use the first number detected
-        if (!isNaN(num)) {
-          if (!currentSurah) {
-            if (surahNames[num - 1]) {
-              showSurah(surahNames[num - 1]);
-            }
-          } else {
-        const lamps = document.querySelectorAll('.lamp');
-const verses = document.querySelectorAll('.verse');
-const index = num - 1;
-if (index >= 0 && index < lamps.length) {
-  // Turn on the selected lamp
-  lamps[index].classList.add('on');
-  verses[index].style.display = 'block';
-  verses[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  // Update currentIndex if needed
-  if (index >= currentIndex) {
-    currentIndex = index + 1;
-  }
-}
-
+      // Detect Ayah number (like "الآية رقم 3" or just "3")
+      const ayahNumberMatch = transcript.match(/(?:ال)?آية(?: رقم)? ?(\d+)/) || transcript.match(/\b(\d+)\b/);
+      if (ayahNumberMatch && currentSurah) {
+        const num = parseInt(ayahNumberMatch[1]);
+        if (!isNaN(num) && num === currentIndex + 1) {
+          const lamps = document.querySelectorAll('.lamp');
+          const verses = document.querySelectorAll('.verse');
+          if (lamps[currentIndex]) {
+            lamps[currentIndex].classList.add('on');
+            verses[currentIndex].style.display = 'block';
+            verses[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            currentIndex++;
           }
         }
       }
@@ -304,6 +293,8 @@ if (index >= 0 && index < lamps.length) {
 
   loadSurahs();
 </script>
+
+
 
 </body>
 </html>
